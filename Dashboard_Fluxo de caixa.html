@@ -278,10 +278,22 @@
           <div class="rel-total-row rel-final"><span>Total Vencido Mês</span><span id="relTotalVencidoMes"></span></div>
         </div>
 
+        <div class="rel-section-title"><span>A vencer mês</span><span id="relAVencerMesNome"></span></div>
+        <table class="rel-table" id="relTabelaAVencerMes"></table>
+        <div class="rel-totais">
+          <div class="rel-total-row rel-final"><span>Total a Vencer Mês</span><span id="relTotalAVencerMes"></span></div>
+        </div>
+
         <div class="rel-section-title"><span>Vencidos ano</span><span id="relAnoNome"></span></div>
         <table class="rel-table" id="relTabelaVencidosAno"></table>
         <div class="rel-totais">
           <div class="rel-total-row rel-final"><span>Total Vencido Ano</span><span id="relTotalVencidoAno"></span></div>
+        </div>
+
+        <div class="rel-section-title"><span>A vencer ano</span><span id="relAVencerAnoNome"></span></div>
+        <table class="rel-table" id="relTabelaAVencerAno"></table>
+        <div class="rel-totais">
+          <div class="rel-total-row rel-final"><span>Total a Vencer Ano</span><span id="relTotalAVencerAno"></span></div>
         </div>
 
         <div class="rel-section-title">Necessidade Caixa</div>
@@ -291,6 +303,7 @@
           <div class="rel-total-row"><span>Saídas</span><span id="relRecapSaidas"></span></div>
           <div class="rel-total-row"><span>Vencidos</span><span id="relRecapVencidos"></span></div>
           <div class="rel-total-row rel-final"><span>Saldo Final</span><span id="relRecapSaldoFinal"></span></div>
+          <div class="rel-total-row"><span class="rel-tag" style="margin-left:0;">A vencer (informativo, não entra no Saldo Final)</span><span id="relRecapAVencer"></span></div>
         </div>
 
         <div class="rel-rodape no-print">
@@ -652,39 +665,61 @@ function drawGauge(score) {
   const saidasDia = titulos.filter(t => t.data === hojeISO);
   const subtotalSaidaDia = saidasDia.reduce((s, t) => s + Math.abs(t.valor), 0);
 
-  // Bloco 3: Vencidos no mês corrente (exclui hoje, já contado acima)
+  // Bloco 3: títulos do mês corrente (exclui hoje, já contado acima), separados entre
+  // já vencidos (data <= hoje) e a vencer (data > hoje, ainda dentro do mês corrente)
   document.getElementById('relMesNome').textContent = MESES_PT[mesAtual];
-  const vencidosMesArr = titulos
-    .filter(t => {
-      const d = parseISO(t.data);
-      return d && t.data !== hojeISO && d.getFullYear() === anoAtual && d.getMonth() === mesAtual;
-    })
+  document.getElementById('relAVencerMesNome').textContent = MESES_PT[mesAtual];
+  const titulosMes = titulos.filter(t => {
+    const d = parseISO(t.data);
+    return d && t.data !== hojeISO && d.getFullYear() === anoAtual && d.getMonth() === mesAtual;
+  });
+  const vencidosMesArr = titulosMes
+    .filter(t => diasAtraso(parseISO(t.data), hoje) >= 0)
+    .sort((a, b) => a.data.localeCompare(b.data));
+  const aVencerMesArr = titulosMes
+    .filter(t => diasAtraso(parseISO(t.data), hoje) < 0)
     .sort((a, b) => a.data.localeCompare(b.data));
   document.getElementById('relTabelaVencidosMes').innerHTML = tabelaHTML(vencidosMesArr, hoje);
+  document.getElementById('relTabelaAVencerMes').innerHTML = tabelaHTML(aVencerMesArr, hoje);
   const totalVencidoMes = vencidosMesArr.reduce((s, t) => s + Math.abs(t.valor), 0);
+  const totalAVencerMes = aVencerMesArr.reduce((s, t) => s + Math.abs(t.valor), 0);
   document.getElementById('relTotalVencidoMes').textContent = fmtBRL(totalVencidoMes);
+  document.getElementById('relTotalAVencerMes').textContent = fmtBRL(totalAVencerMes);
 
-  // Bloco 4: Vencidos no ano corrente (2026), fora do mês corrente — não inclui anos anteriores
+  // Bloco 4: títulos do ano corrente (2026) fora do mês corrente — não inclui anos anteriores —
+  // separados da mesma forma entre vencidos e a vencer
   document.getElementById('relAnoNome').textContent = String(anoAtual);
-  const vencidosAnoArr = titulos
-    .filter(t => {
-      const d = parseISO(t.data);
-      return d && d.getFullYear() === anoAtual && d.getMonth() !== mesAtual;
-    })
+  document.getElementById('relAVencerAnoNome').textContent = String(anoAtual);
+  const titulosAno = titulos.filter(t => {
+    const d = parseISO(t.data);
+    return d && d.getFullYear() === anoAtual && d.getMonth() !== mesAtual;
+  });
+  const vencidosAnoArr = titulosAno
+    .filter(t => diasAtraso(parseISO(t.data), hoje) >= 0)
+    .sort((a, b) => a.data.localeCompare(b.data));
+  const aVencerAnoArr = titulosAno
+    .filter(t => diasAtraso(parseISO(t.data), hoje) < 0)
     .sort((a, b) => a.data.localeCompare(b.data));
   document.getElementById('relTabelaVencidosAno').innerHTML = tabelaHTML(vencidosAnoArr, hoje);
+  document.getElementById('relTabelaAVencerAno').innerHTML = tabelaHTML(aVencerAnoArr, hoje);
   const totalVencidoAno = vencidosAnoArr.reduce((s, t) => s + Math.abs(t.valor), 0);
+  const totalAVencerAno = aVencerAnoArr.reduce((s, t) => s + Math.abs(t.valor), 0);
   document.getElementById('relTotalVencidoAno').textContent = fmtBRL(totalVencidoAno);
+  document.getElementById('relTotalAVencerAno').textContent = fmtBRL(totalAVencerAno);
 
-  // Recap "Necessidade Caixa": Saldo (bancos) + Entradas − Saídas − Vencidos, cada componente contado uma única vez
+  // Recap "Necessidade Caixa": Saldo (bancos) + Entradas − Saídas − Vencidos, cada componente
+  // contado uma única vez. "A vencer" fica só informativo, não entra no Saldo Final porque
+  // ainda não é uma obrigação vencida.
   const recapSaidas = subtotalSaidaDia;
   const recapVencidos = totalVencidoMes + totalVencidoAno;
+  const recapAVencer = totalAVencerMes + totalAVencerAno;
   const recapSaldoFinal = saldoBancos + entradas - recapSaidas - recapVencidos;
   document.getElementById('relRecapSaldo').textContent = fmtBRL(saldoBancos);
   document.getElementById('relRecapEntradas').textContent = fmtBRL(entradas);
   document.getElementById('relRecapSaidas').textContent = fmtBRL(-recapSaidas);
   document.getElementById('relRecapVencidos').textContent = fmtBRL(-recapVencidos);
   document.getElementById('relRecapSaldoFinal').textContent = fmtBRL(recapSaldoFinal);
+  document.getElementById('relRecapAVencer').textContent = fmtBRL(-recapAVencer);
 })();
 </script>
 </body>
