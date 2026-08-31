@@ -1,0 +1,15 @@
+# Arquivos temporários do Excel/Office
+~$*.xlsx
+~$*.xls
+~$*.docx
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# OneDrive
+*.tmp
+
+# Planilha fonte dos dados - fica só local, não sobe pro GitHub
+*.xlsx
